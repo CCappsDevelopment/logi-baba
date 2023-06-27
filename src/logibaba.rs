@@ -1,14 +1,12 @@
 extern crate sdl2;
 
-use std::{ collections::HashMap, time::Duration };
-use std::time::Instant;
-use sdl2::rect::Rect;
+use std::{collections::HashMap, time::Duration};
 
 use events::Events;
 use screen_renderer::ScreenRenderer;
 use sprite_animation::SpriteData;
 
-use crate::{ events, sprite_animation, screen_renderer };
+use crate::{events, level_map::LevelMap, screen_renderer, sprite_animation};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MovementDirection {
@@ -37,78 +35,45 @@ pub struct GameEntity {
     pub speed: f32,
 }
 
-#[derive(Debug)]
 pub struct Game {
+    pub screen_renderer: ScreenRenderer,
     pub entities: Vec<GameEntity>,
 }
 
 impl Game {
     pub fn new() -> Game {
+        let screen_renderer = ScreenRenderer::new();
+        let entities = Vec::new();
         Game {
-            entities: vec![
-                GameEntity {
-                    name: "Logi".to_string(),
-                    states: vec![(EntityState::You, true)].into_iter().collect(),
-                    position: (0, 0),
-                    tile: (0, 0),
-                    sprite_data: SpriteData {
-                        sprite_sheet: "./assets/spritesheets/characters.png".to_string(),
-                        frame_width: 24,
-                        frame_height: 24,
-                        sprite_width: 128,
-                        sprite_height: 128,
-                        start_frame: Rect::new(576, 1, 24, 24),
-                        num_frames: 4,
-                        current_frame: 0,
-                    },
-                    movement_direction: MovementDirection::Idle,
-                    facing: MovementDirection::Right,
-                    speed: 1.0,
-                },
-                GameEntity {
-                    name: "Goal".to_string(),
-                    states: vec![(EntityState::Win, true)].into_iter().collect(),
-                    position: (640, 640),
-                    tile: (0, 0),
-                    sprite_data: SpriteData {
-                        sprite_sheet: "./assets/spritesheets/objects.png".to_string(),
-                        frame_width: 24,
-                        frame_height: 24,
-                        sprite_width: 128,
-                        sprite_height: 128,
-                        start_frame: Rect::new(101, 226, 24, 24),
-                        num_frames: 1,
-                        current_frame: 0,
-                    },
-                    movement_direction: MovementDirection::Idle,
-                    facing: MovementDirection::Right,
-                    speed: 0.0,
-                }
-            ],
+            screen_renderer,
+            entities,
         }
     }
 
     pub fn start(&mut self) {
-        let mut screen_renderer = ScreenRenderer::new();
+        self.load_level(1);
 
         // Game loop
         'running: loop {
             // Handle events
-            if
-                !Events::process_events(
-                    &mut self.entities,
-                    &mut screen_renderer.context.event_pump,
-                    &mut screen_renderer.context.canvas
-                )
-            {
+            if !Events::process_events(
+                &mut self.entities,
+                &mut self.screen_renderer.context.event_pump,
+                &mut self.screen_renderer.context.canvas,
+            ) {
                 break 'running;
             }
 
             // Render the screen
-            screen_renderer.draw(&mut self.entities);
+            self.screen_renderer.draw(&mut self.entities);
 
             // Set the framerate to 60fps
             std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
         }
+    }
+
+    fn load_level(&mut self, level_to_load: i32) {
+        let level_map = LevelMap::new(level_to_load, &self.screen_renderer.context);
+        self.entities = level_map.entities;
     }
 }
