@@ -1,0 +1,13 @@
+[package]
+name = "logibaba"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "logibaba"
+path = "src/main.rs"
+
+[dependencies.sdl2]
+version = "*"
+default-features = false
+features = ["image"]
