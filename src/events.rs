@@ -2,7 +2,7 @@ use logibaba::MovementDirection;
 
 use sdl2::{ EventPump, event::Event, mouse::MouseButton, keyboard::Keycode };
 
-use crate::logibaba;
+use crate::{logibaba, entity};
 use crate::entity::{ Entity, EntityState };
 
 pub struct Events;
@@ -49,6 +49,14 @@ impl Events {
                         }
                         Keycode::Space => {
                             println!("Space");
+                            for entity in &mut *entities {
+                                if !entity.states.contains_key(&EntityState::Push) {
+                                    entity.states.insert(EntityState::Push, true);
+                                }
+                                else {
+                                    entity.states.remove(&EntityState::Push);
+                                }
+                            }
                         }
                         _ => {}
                     }

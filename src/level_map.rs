@@ -40,7 +40,7 @@ impl LevelMap {
             }
             _ => {}
         }
-
+        entities.sort_by_key(|entity| entity.draw_order);
         return entities;
     }
 }

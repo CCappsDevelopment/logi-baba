@@ -12,27 +12,38 @@ pub struct SpriteData {
     pub sprite_width: u32,
     pub sprite_height: u32,
     pub start_frame: Rect,
+    pub frame_x: i32,
     pub num_frames: u32,
     pub current_frame: u32,
-}
-
-#[derive(Debug)]
-pub struct Entity {
-    pub name: String,
-    pub states: HashMap<EntityState, bool>,
-    pub position: (i32, i32),
-    pub tile: (i32, i32),
-    pub draw_order: i32,
-    pub sprite_data: SpriteData,
-    pub movement_direction: MovementDirection,
-    pub facing: MovementDirection,
-    pub speed: f32,
 }
 
 #[derive(Hash, Eq, PartialEq, Debug, Clone, Copy)]
 pub enum EntityState {
     You,
     Win,
+    Push,
+}
+
+#[derive(Debug, Clone)]
+pub struct Neighbors {
+    pub up: Option<(i32, i32)>,
+    pub right: Option<(i32, i32)>,
+    pub down: Option<(i32, i32)>,
+    pub left: Option<(i32, i32)>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Entity {
+    pub name: String,
+    pub states: HashMap<EntityState, bool>,
+    pub position: (i32, i32),
+    pub tile: (i32, i32),
+    pub neighbors: Vec<Neighbors>,
+    pub draw_order: i32,
+    pub sprite_data: SpriteData,
+    pub movement_direction: MovementDirection,
+    pub facing: MovementDirection,
+    pub speed: f32,
 }
 
 pub struct EntityRepository {
@@ -50,6 +61,7 @@ impl EntityRepository {
             states: vec![(EntityState::You, true)].into_iter().collect(),
             position: (0, 0),
             tile: (0, 0),
+            neighbors: Vec::new(),
             draw_order: 3,
             sprite_data: SpriteData {
                 sprite_sheet: "./assets/spritesheets/characters.png".to_string(),
@@ -58,6 +70,7 @@ impl EntityRepository {
                 sprite_width: tile_width,
                 sprite_height: tile_height,
                 start_frame: Rect::new(576, 1, 24, 24),
+                frame_x: 576,
                 num_frames: 4,
                 current_frame: 0,
             },
@@ -71,6 +84,7 @@ impl EntityRepository {
             states: vec![(EntityState::Win, true)].into_iter().collect(),
             position: (5 * (tile_width as i32), 5 * (tile_height as i32)),
             tile: (5, 5),
+            neighbors: Vec::new(),
             draw_order: 1,
             sprite_data: SpriteData {
                 sprite_sheet: "./assets/spritesheets/objects.png".to_string(),
@@ -79,6 +93,7 @@ impl EntityRepository {
                 sprite_width: tile_width,
                 sprite_height: tile_height,
                 start_frame: Rect::new(101, 226, 24, 24),
+                frame_x: 101,
                 num_frames: 1,
                 current_frame: 0,
             },
@@ -100,6 +115,7 @@ impl EntityRepository {
             states: entity.states.clone(),
             position: (x_pos, y_pos),
             tile: (x_pos / (self.tile_width as i32), y_pos / (self.tile_height as i32)),
+            neighbors: entity.neighbors.clone(),
             draw_order: entity.draw_order,
             sprite_data: entity.sprite_data.clone(),
             movement_direction: entity.movement_direction.clone(),

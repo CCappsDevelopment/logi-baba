@@ -49,6 +49,8 @@ impl ScreenRenderer {
 
     // Render the screen
     pub fn draw(&mut self, entities: &mut Vec<Entity>) {
+        self.update(entities);
+        
         // Clear the screen with a background color
         let _ = self.draw_bg();
 
@@ -56,6 +58,7 @@ impl ScreenRenderer {
         let _ = self.draw_grid();
 
         // Draw the entities
+        //entities.sort_by_key(|entity| entity.draw_order);
         let _ = self.draw_entities(entities);
 
         self.context.canvas.present();
@@ -89,7 +92,8 @@ impl ScreenRenderer {
         Ok(())
     }
 
-    #[cfg(target_os = "windows, macos")]
+    // ad a cfg to run the draw_grid function on windows and macos
+    #[cfg(not(target_os = "linux"))]
     fn draw_grid(&mut self) -> Result<(), String> {
         // Create a texture for drawing
         let texture_creator = self.context.canvas.texture_creator();
@@ -124,9 +128,7 @@ impl ScreenRenderer {
     }
 
     fn draw_entities(&mut self, entities: &mut Vec<Entity>) -> Result<(), String> {
-        entities.sort_by_key(|entity| entity.draw_order);
-
-        for entity in entities {
+        for entity in entities.iter_mut() {
             let texture_creator = self.context.canvas.texture_creator();
             let mut surface: Surface = LoadSurface::from_file(&entity.sprite_data.sprite_sheet)?;
 
@@ -137,10 +139,51 @@ impl ScreenRenderer {
                 .create_texture_from_surface(&surface)
                 .map_err(|e| e.to_string())?;
 
-            let mut sprite_x = entity.sprite_data.start_frame.x();
+            let sprite_rect = Rect::new(
+                entity.sprite_data.frame_x,
+                entity.sprite_data.start_frame.y(),
+                entity.sprite_data.frame_width,
+                entity.sprite_data.frame_height
+            );
 
-            if entity.states.contains_key(&EntityState::You) {
-                if self.last_frame_ticks.elapsed().as_millis() > 100 {
+            let world_rect = Rect::new(
+                entity.position.0,
+                entity.position.1,
+                entity.sprite_data.sprite_width,
+                entity.sprite_data.sprite_height
+            );
+
+            self.context.canvas.copy(&texture, Some(sprite_rect), Some(world_rect))?;
+        }
+
+        Ok(())
+    }
+
+    pub fn update(&mut self, entities: &mut Vec<Entity>) {
+        for entity in entities.iter_mut() {
+            if self.last_frame_ticks.elapsed().as_millis() >= 100 {
+                
+                // Update neighbors
+                // for entity_itr in entities {
+                //     if !entity_itr.states.contains_key(&EntityState::You) {
+                //         if entity_itr.tile == (entity.tile.0, entity.tile.1 - 1) {
+                //             entity.neighbors[0].up = Some(entity_itr.position);
+                //         }
+                //         if entity_itr.tile == (entity.tile.0 + 1, entity.tile.1) {
+                //             entity.neighbors[0].right = Some(entity_itr.position);
+                //         }
+                //         if entity_itr.tile == (entity.tile.0, entity.tile.1 + 1) {
+                //             entity.neighbors[0].down = Some(entity_itr.position);
+                //         }
+                //         if entity_itr.tile == (entity.tile.0 - 1, entity.tile.1) {
+                //             entity.neighbors[0].left = Some(entity_itr.position);
+                //         }
+                //     }
+                // }
+
+                println!("Entity: {:?}\nNeighbors: {:?}", entity.name, entity.neighbors);
+
+                if entity.states.contains_key(&EntityState::You) {
                     entity.position = match entity.movement_direction {
                         MovementDirection::Up => {
                             (entity.position.0, entity.position.1 - self.tile_height)
@@ -179,6 +222,12 @@ impl ScreenRenderer {
                         entity.tile.1 = 7;
                         entity.position.1 = self.tile_height * 7;
                     }
+
+                    entity.sprite_data.current_frame =
+                        (entity.sprite_data.current_frame + 1) % entity.sprite_data.num_frames;
+                }
+                if entity.states.contains_key(&EntityState::Push) {
+
                 }
 
                 let frame_multiplier = match entity.movement_direction {
@@ -202,39 +251,13 @@ impl ScreenRenderer {
                 };
 
                 let frame_width_plus_one = (entity.sprite_data.frame_width as i32) + 1;
-                sprite_x =
+                entity.sprite_data.frame_x =
                     frame_multiplier * frame_width_plus_one +
                     entity.sprite_data.start_frame.x() +
                     frame_width_plus_one *
                         ((entity.sprite_data.current_frame as i32) * is_idle_factor);
             }
 
-            let sprite_rect = Rect::new(
-                sprite_x,
-                entity.sprite_data.start_frame.y(),
-                entity.sprite_data.frame_width,
-                entity.sprite_data.frame_height
-            );
-
-            let world_rect = Rect::new(
-                entity.position.0,
-                entity.position.1,
-                entity.sprite_data.sprite_width,
-                entity.sprite_data.sprite_height
-            );
-
-            // Get next frame
-            if self.frame_ticks >= self.frame_delay {
-                entity.sprite_data.current_frame =
-                    (entity.sprite_data.current_frame + 1) % entity.sprite_data.num_frames;
-                self.frame_ticks = 0;
-            }
-
-            self.frame_ticks += 1;
-
-            self.context.canvas.copy(&texture, Some(sprite_rect), Some(world_rect))?;
         }
-
-        Ok(())
     }
 }
