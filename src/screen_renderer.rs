@@ -1,13 +1,14 @@
 use std::time::Instant;
 
-use sdl2::image::{InitFlag, LoadSurface, Sdl2ImageContext};
+use sdl2::image::{ InitFlag, LoadSurface, Sdl2ImageContext };
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::BlendMode;
 use sdl2::surface::Surface;
 
-use crate::logibaba::{EntityState, MovementDirection};
-use crate::{logibaba::GameEntity, sdl_context::SdlContext};
+use crate::entity::{ Entity, EntityState };
+use crate::logibaba::MovementDirection;
+use crate::sdl_context::SdlContext;
 
 pub struct ScreenRenderer {
     pub context: SdlContext,
@@ -47,26 +48,94 @@ impl ScreenRenderer {
     }
 
     // Render the screen
-    pub fn draw(&mut self, entities: &mut Vec<GameEntity>) {
+    pub fn draw(&mut self, entities: &mut Vec<Entity>) {
         // Clear the screen with a background color
+        let _ = self.draw_bg();
+
+        // Draw the tile grid
+        let _ = self.draw_grid();
+
+        // Draw the entities
+        let _ = self.draw_entities(entities);
+
+        self.context.canvas.present();
+    }
+
+    fn draw_bg(&mut self) -> Result<(), String> {
         self.context.canvas.set_draw_color(Color::RGB(28, 28, 40));
         self.context.canvas.clear();
 
-        self.draw_grid();
+        Ok(())
+    }
+
+    #[cfg(target_os = "linux")]
+    fn draw_grid(&mut self) -> Result<(), String> {
+        self.context.canvas.set_draw_color(Color::RGBA(228, 228, 240, 64));
+
+        // Draw vertical lines
+        for x in (0..self.window_width).step_by((self.window_width as usize) / 12) {
+            self.context.canvas
+                .draw_line((x as i32, 0), (x as i32, self.window_height as i32))
+                .unwrap();
+        }
+
+        // Draw horizontal lines
+        for y in (0..self.window_height).step_by((self.window_height as usize) / 8) {
+            self.context.canvas
+                .draw_line((0, y as i32), (self.window_width as i32, y as i32))
+                .unwrap();
+        }
+
+        Ok(())
+    }
+
+    #[cfg(target_os = "windows, macos")]
+    fn draw_grid(&mut self) -> Result<(), String> {
+        // Create a texture for drawing
+        let texture_creator = self.context.canvas.texture_creator();
+        let mut texture = texture_creator
+            .create_texture_target(None, self.window_width as u32, self.window_height as u32)
+            .unwrap();
+
+        // Set the blend mode for the texture
+        texture.set_blend_mode(BlendMode::Blend);
+
+        // Set the texture as the target for the canvas
+        self.context.canvas
+            .with_texture_canvas(&mut texture, |canvas| {
+                canvas.set_draw_color(Color::RGBA(228, 228, 240, 64));
+
+                // Draw vertical lines
+                for x in (0..self.window_width).step_by((self.window_width as usize) / 12) {
+                    canvas.draw_line((x as i32, 0), (x as i32, self.window_height as i32)).unwrap();
+                }
+
+                // Draw horizontal lines
+                for y in (0..self.window_height).step_by((self.window_height as usize) / 8) {
+                    canvas.draw_line((0, y as i32), (self.window_width as i32, y as i32)).unwrap();
+                }
+            })
+            .unwrap();
+
+        // Draw the texture to the screen
+        self.context.canvas.copy(&texture, None, None).unwrap();
+
+        Ok(())
+    }
+
+    fn draw_entities(&mut self, entities: &mut Vec<Entity>) -> Result<(), String> {
+        entities.sort_by_key(|entity| entity.draw_order);
 
         for entity in entities {
             let texture_creator = self.context.canvas.texture_creator();
-            let mut surface: Surface =
-                LoadSurface::from_file(&entity.sprite_data.sprite_sheet).unwrap();
+            let mut surface: Surface = LoadSurface::from_file(&entity.sprite_data.sprite_sheet)?;
 
             let color_key = Color::RGB(84, 165, 75);
-            surface
-                .set_color_key(true, color_key)
-                .expect("Could not set color key");
+            surface.set_color_key(true, color_key).expect("Could not set color key");
 
             let texture = texture_creator
                 .create_texture_from_surface(&surface)
-                .unwrap();
+                .map_err(|e| e.to_string())?;
 
             let mut sprite_x = entity.sprite_data.start_frame.x();
 
@@ -117,13 +186,14 @@ impl ScreenRenderer {
                     MovementDirection::Right => 0,
                     MovementDirection::Down => 12,
                     MovementDirection::Left => 8,
-                    MovementDirection::Idle => match entity.facing {
-                        MovementDirection::Up => 4,
-                        MovementDirection::Right => 0,
-                        MovementDirection::Down => 12,
-                        MovementDirection::Left => 8,
-                        _ => 0,
-                    },
+                    MovementDirection::Idle =>
+                        match entity.facing {
+                            MovementDirection::Up => 4,
+                            MovementDirection::Right => 0,
+                            MovementDirection::Down => 12,
+                            MovementDirection::Left => 8,
+                            _ => 0,
+                        }
                 };
 
                 let is_idle_factor = match entity.movement_direction {
@@ -132,24 +202,25 @@ impl ScreenRenderer {
                 };
 
                 let frame_width_plus_one = (entity.sprite_data.frame_width as i32) + 1;
-                sprite_x = frame_multiplier * frame_width_plus_one
-                    + entity.sprite_data.start_frame.x()
-                    + frame_width_plus_one
-                        * ((entity.sprite_data.current_frame as i32) * is_idle_factor);
+                sprite_x =
+                    frame_multiplier * frame_width_plus_one +
+                    entity.sprite_data.start_frame.x() +
+                    frame_width_plus_one *
+                        ((entity.sprite_data.current_frame as i32) * is_idle_factor);
             }
 
             let sprite_rect = Rect::new(
                 sprite_x,
                 entity.sprite_data.start_frame.y(),
                 entity.sprite_data.frame_width,
-                entity.sprite_data.frame_height,
+                entity.sprite_data.frame_height
             );
 
             let world_rect = Rect::new(
                 entity.position.0,
                 entity.position.1,
                 entity.sprite_data.sprite_width,
-                entity.sprite_data.sprite_height,
+                entity.sprite_data.sprite_height
             );
 
             // Get next frame
@@ -161,50 +232,8 @@ impl ScreenRenderer {
 
             self.frame_ticks += 1;
 
-            self.context
-                .canvas
-                .copy(&texture, Some(sprite_rect), Some(world_rect))
-                .unwrap();
+            self.context.canvas.copy(&texture, Some(sprite_rect), Some(world_rect))?;
         }
-        self.context.canvas.present();
-    }
-
-    fn draw_grid(&mut self) -> Result<(), String> {
-        // Create a texture for drawing
-        let texture_creator = self.context.canvas.texture_creator();
-        let mut texture = texture_creator
-            .create_texture_target(
-                None,
-                self.window_width as u32,
-                self.window_height as u32,
-            )
-            .unwrap();
-
-        // Set the blend mode for the texture
-        texture.set_blend_mode(BlendMode::Blend);
-
-        // Set the texture as the target for the canvas
-        self.context.canvas.with_texture_canvas(&mut texture, |canvas| {
-                canvas.set_draw_color(Color::RGBA(228, 228, 240, 64));
-
-                // Draw vertical lines
-                for x in (0..self.window_width).step_by(self.window_width as usize / 12) {
-                    canvas
-                        .draw_line((x as i32, 0), (x as i32, self.window_height as i32))
-                        .unwrap();
-                }
-
-                // Draw horizontal lines
-                for y in (0..self.window_height).step_by(self.window_height as usize / 8) {
-                    canvas
-                        .draw_line((0, y as i32), (self.window_width as i32, y as i32))
-                        .unwrap();
-                }
-            })
-            .unwrap();
-
-        // Draw the texture to the screen
-        self.context.canvas.copy(&texture, None, None).unwrap();
 
         Ok(())
     }

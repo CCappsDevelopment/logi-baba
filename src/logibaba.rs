@@ -1,12 +1,11 @@
 extern crate sdl2;
 
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use events::Events;
 use screen_renderer::ScreenRenderer;
-use sprite_animation::SpriteData;
 
-use crate::{events, level_map::LevelMap, screen_renderer, sprite_animation};
+use crate::{ events, level_map::LevelMap, screen_renderer, entity::Entity };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum MovementDirection {
@@ -17,27 +16,9 @@ pub enum MovementDirection {
     Idle,
 }
 
-#[derive(Hash, Eq, PartialEq, Debug)]
-pub enum EntityState {
-    You,
-    Win,
-}
-
-#[derive(Debug)]
-pub struct GameEntity {
-    pub name: String,
-    pub states: HashMap<EntityState, bool>,
-    pub position: (i32, i32),
-    pub tile: (i32, i32),
-    pub sprite_data: SpriteData,
-    pub movement_direction: MovementDirection,
-    pub facing: MovementDirection,
-    pub speed: f32,
-}
-
 pub struct Game {
     pub screen_renderer: ScreenRenderer,
-    pub entities: Vec<GameEntity>,
+    pub entities: Vec<Entity>,
 }
 
 impl Game {
@@ -51,16 +32,18 @@ impl Game {
     }
 
     pub fn start(&mut self) {
-        self.load_level(1);
+        self.load_level(2);
 
         // Game loop
         'running: loop {
             // Handle events
-            if !Events::process_events(
-                &mut self.entities,
-                &mut self.screen_renderer.context.event_pump,
-                &mut self.screen_renderer.context.canvas,
-            ) {
+            if
+                !Events::process_events(
+                    &mut self.entities,
+                    &mut self.screen_renderer.context.event_pump,
+                    &mut self.screen_renderer.context.canvas
+                )
+            {
                 break 'running;
             }
 

@@ -1,13 +1,8 @@
-use sdl2::rect::Rect;
-
-use crate::{
-    logibaba::{EntityState, GameEntity, MovementDirection},
-    sdl_context::SdlContext,
-    sprite_animation::SpriteData,
-};
+use crate::sdl_context::SdlContext;
+use crate::entity::{ Entity, EntityRepository };
 
 pub struct LevelMap {
-    pub entities: Vec<GameEntity>,
+    pub entities: Vec<Entity>,
 }
 
 impl LevelMap {
@@ -18,53 +13,34 @@ impl LevelMap {
         }
     }
 
-    fn get_level_map(level: i32, sdl_context: &SdlContext) -> Vec<GameEntity> {
+    fn get_level_map(level: i32, sdl_context: &SdlContext) -> Vec<Entity> {
         let tile_width = sdl_context.canvas.viewport().width() / 12;
         let tile_height = sdl_context.canvas.viewport().height() / 8;
+        let mut entities = Vec::new();
+        let entity_repo = EntityRepository::new(tile_width, tile_height);
+
         match level {
             1 => {
-                return vec![
-                    GameEntity {
-                        name: "Logi".to_string(),
-                        states: vec![(EntityState::You, true)].into_iter().collect(),
-                        position: (0, 0),
-                        tile: (0, 0),
-                        sprite_data: SpriteData {
-                            sprite_sheet: "./assets/spritesheets/characters.png".to_string(),
-                            frame_width: 24,
-                            frame_height: 24,
-                            sprite_width: tile_width,
-                            sprite_height: tile_height,
-                            start_frame: Rect::new(576, 1, 24, 24),
-                            num_frames: 4,
-                            current_frame: 0,
-                        },
-                        movement_direction: MovementDirection::Idle,
-                        facing: MovementDirection::Right,
-                        speed: 1.0,
-                    },
-                    GameEntity {
-                        name: "Goal".to_string(),
-                        states: vec![(EntityState::Win, true)].into_iter().collect(),
-                        position: (5 * tile_width as i32, 5 * tile_height as i32),
-                        tile: (5, 5),
-                        sprite_data: SpriteData {
-                            sprite_sheet: "./assets/spritesheets/objects.png".to_string(),
-                            frame_width: 24,
-                            frame_height: 24,
-                            sprite_width: tile_width,
-                            sprite_height: tile_height,
-                            start_frame: Rect::new(101, 226, 24, 24),
-                            num_frames: 1,
-                            current_frame: 0,
-                        },
-                        movement_direction: MovementDirection::Idle,
-                        facing: MovementDirection::Right,
-                        speed: 0.0,
-                    },
-                ]
+                entities = vec![
+                    entity_repo.create_entity("Logi", 0, 0).unwrap(),
+                    entity_repo
+                        .create_entity("Goal", 5 * (tile_width as i32), 5 * (tile_height as i32))
+                        .unwrap()
+                ];
             }
-            _ => Vec::new(),
+            2 => {
+                entities = vec![
+                    entity_repo
+                        .create_entity("Logi", 6 * (tile_width as i32), 1 * (tile_height as i32))
+                        .unwrap(),
+                    entity_repo
+                        .create_entity("Goal", 0 * (tile_width as i32), 6 * (tile_height as i32))
+                        .unwrap()
+                ];
+            }
+            _ => {}
         }
+
+        return entities;
     }
 }

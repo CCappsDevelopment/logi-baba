@@ -1,14 +1,15 @@
-use logibaba::{ GameEntity, EntityState, MovementDirection };
+use logibaba::MovementDirection;
 
 use sdl2::{ EventPump, event::Event, mouse::MouseButton, keyboard::Keycode };
 
 use crate::logibaba;
+use crate::entity::{ Entity, EntityState };
 
 pub struct Events;
 
 impl Events {
     pub fn process_events(
-        entities: &mut Vec<GameEntity>,
+        entities: &mut Vec<Entity>,
         event_pump: &mut EventPump,
         canvas: &mut sdl2::render::Canvas<sdl2::video::Window>
     ) -> bool {
