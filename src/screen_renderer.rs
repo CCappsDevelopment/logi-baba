@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 use sdl2::image::{ InitFlag, LoadSurface, Sdl2ImageContext };
@@ -48,19 +49,17 @@ impl ScreenRenderer {
     }
 
     // Render the screen
-    pub fn draw(&mut self, entities: &mut Vec<Entity>) {
-        self.update(entities);
-        
-        // Clear the screen with a background color
-        let _ = self.draw_bg();
+    pub fn draw(&mut self, entities: &mut Vec<Entity>, entity_map: &mut HashMap<(i32, i32), HashSet<usize>>) {
+        if self.last_frame_ticks.elapsed().as_millis() >= 60 {
+            self.update(entities, entity_map);
 
-        // Draw the tile grid
-        let _ = self.draw_grid();
+            let _ = self.draw_bg();
+            let _ = self.draw_grid();
+            let _ = self.draw_entities(entities);
 
-        // Draw the entities
-        //entities.sort_by_key(|entity| entity.draw_order);
-        let _ = self.draw_entities(entities);
-
+            self.last_frame_ticks = Instant::now();
+        }
+    
         self.context.canvas.present();
     }
 
@@ -159,75 +158,34 @@ impl ScreenRenderer {
         Ok(())
     }
 
-    pub fn update(&mut self, entities: &mut Vec<Entity>) {
+    pub fn update(&mut self, entities: &mut Vec<Entity>, entity_map: &mut HashMap<(i32, i32), HashSet<usize>>) {
         for entity in entities.iter_mut() {
-            if self.last_frame_ticks.elapsed().as_millis() >= 100 {
+                // compute the tile positions of the four adjacent tiles
+                let up_tile = (entity.tile.0, entity.tile.1 - 1);
+                let right_tile = (entity.tile.0 + 1, entity.tile.1);
+                let down_tile = (entity.tile.0, entity.tile.1 + 1);
+                let left_tile = (entity.tile.0 - 1, entity.tile.1);
+
+                // use the tile positions to query the entity_map
+                let _ = entity.neighbors.up.insert(entity_map.get(&up_tile).unwrap_or(&HashSet::new()).clone());
+                let _ = entity.neighbors.right.insert(entity_map.get(&right_tile).unwrap_or(&HashSet::new()).clone());
+                let _ = entity.neighbors.down.insert(entity_map.get(&down_tile).unwrap_or(&HashSet::new()).clone());
+                let _ = entity.neighbors.left.insert(entity_map.get(&left_tile).unwrap_or(&HashSet::new()).clone());
                 
-                // Update neighbors
-                // for entity_itr in entities {
-                //     if !entity_itr.states.contains_key(&EntityState::You) {
-                //         if entity_itr.tile == (entity.tile.0, entity.tile.1 - 1) {
-                //             entity.neighbors[0].up = Some(entity_itr.position);
-                //         }
-                //         if entity_itr.tile == (entity.tile.0 + 1, entity.tile.1) {
-                //             entity.neighbors[0].right = Some(entity_itr.position);
-                //         }
-                //         if entity_itr.tile == (entity.tile.0, entity.tile.1 + 1) {
-                //             entity.neighbors[0].down = Some(entity_itr.position);
-                //         }
-                //         if entity_itr.tile == (entity.tile.0 - 1, entity.tile.1) {
-                //             entity.neighbors[0].left = Some(entity_itr.position);
-                //         }
-                //     }
-                // }
-
-                println!("Entity: {:?}\nNeighbors: {:?}", entity.name, entity.neighbors);
-
                 if entity.states.contains_key(&EntityState::You) {
-                    entity.position = match entity.movement_direction {
-                        MovementDirection::Up => {
-                            (entity.position.0, entity.position.1 - self.tile_height)
-                        }
-                        MovementDirection::Right => {
-                            (entity.position.0 + self.tile_width, entity.position.1)
-                        }
-                        MovementDirection::Down => {
-                            (entity.position.0, entity.position.1 + self.tile_height)
-                        }
-                        MovementDirection::Left => {
-                            (entity.position.0 - self.tile_width, entity.position.1)
-                        }
-                        MovementDirection::Idle => entity.position,
+                    println!("up: {:?}\n right: {:?}\n down: {:?}\n left: {:?}\n", entity.neighbors.up, entity.neighbors.right, entity.neighbors.down, entity.neighbors.left);
+                    entity.tile = match entity.movement_direction {
+                        MovementDirection::Up => up_tile,
+                        MovementDirection::Right => right_tile,
+                        MovementDirection::Down => down_tile,
+                        MovementDirection::Left => left_tile,
+                        MovementDirection::Idle => entity.tile,
                     };
-                    self.last_frame_ticks = Instant::now();
-
-                    entity.tile = (
-                        entity.position.0 / self.tile_width,
-                        entity.position.1 / self.tile_height,
-                    );
-
-                    if entity.tile.0 > 11 {
-                        entity.tile.0 = 0;
-                        entity.position.0 = 0;
-                    }
-                    if entity.tile.0 < 0 {
-                        entity.tile.0 = 11;
-                        entity.position.0 = self.tile_width * 11;
-                    }
-                    if entity.tile.1 > 7 {
-                        entity.tile.1 = 0;
-                        entity.position.1 = 0;
-                    }
-                    if entity.tile.1 < 0 {
-                        entity.tile.1 = 7;
-                        entity.position.1 = self.tile_height * 7;
-                    }
+                    
+                    entity.tile_to_position(self.tile_width, self.tile_height);
 
                     entity.sprite_data.current_frame =
                         (entity.sprite_data.current_frame + 1) % entity.sprite_data.num_frames;
-                }
-                if entity.states.contains_key(&EntityState::Push) {
-
                 }
 
                 let frame_multiplier = match entity.movement_direction {
@@ -256,8 +214,14 @@ impl ScreenRenderer {
                     entity.sprite_data.start_frame.x() +
                     frame_width_plus_one *
                         ((entity.sprite_data.current_frame as i32) * is_idle_factor);
-            }
 
+        }
+
+        entity_map.clear();
+
+        // then, repopulate it based on the new entity positions
+        for (i, entity) in entities.iter().enumerate() {
+            entity_map.entry(entity.tile).or_insert_with(HashSet::new).insert(i);
         }
     }
 }
