@@ -12,7 +12,7 @@ impl SdlContext {
         let (event_pump, canvas) = Self::init_sdl2().unwrap();
         SdlContext {
             event_pump,
-            canvas,
+            canvas
         }
     }
 

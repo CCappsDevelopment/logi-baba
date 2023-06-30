@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{ HashMap, HashSet };
 use std::time::Instant;
 
 use sdl2::image::{ InitFlag, LoadSurface, Sdl2ImageContext };
@@ -7,6 +7,7 @@ use sdl2::rect::Rect;
 use sdl2::render::BlendMode;
 use sdl2::surface::Surface;
 
+use crate::debug_console::{DebugConsole, DebugKey};
 use crate::entity::{ Entity, EntityState };
 use crate::logibaba::MovementDirection;
 use crate::sdl_context::SdlContext;
@@ -49,17 +50,25 @@ impl ScreenRenderer {
     }
 
     // Render the screen
-    pub fn draw(&mut self, entities: &mut Vec<Entity>, entity_map: &mut HashMap<(i32, i32), HashSet<usize>>) {
-        if self.last_frame_ticks.elapsed().as_millis() >= 60 {
+    pub fn draw(
+        &mut self,
+        entities: &mut Vec<Entity>,
+        entity_map: &mut HashMap<(i32, i32), HashSet<usize>>,
+        debug_console: &mut DebugConsole,
+    ) {
+        if self.last_frame_ticks.elapsed().as_millis() >= 80 {
             self.update(entities, entity_map);
-
-            let _ = self.draw_bg();
-            let _ = self.draw_grid();
-            let _ = self.draw_entities(entities);
-
             self.last_frame_ticks = Instant::now();
         }
-    
+
+        let _ = self.draw_bg();
+        let _ = self.draw_grid();
+        let _ = self.draw_entities(entities);
+
+        if debug_console.show_console {
+            self.debug_console_out(debug_console, entities, entity_map);
+        }
+
         self.context.canvas.present();
     }
 
@@ -158,70 +167,145 @@ impl ScreenRenderer {
         Ok(())
     }
 
-    pub fn update(&mut self, entities: &mut Vec<Entity>, entity_map: &mut HashMap<(i32, i32), HashSet<usize>>) {
-        for entity in entities.iter_mut() {
-                // compute the tile positions of the four adjacent tiles
-                let up_tile = (entity.tile.0, entity.tile.1 - 1);
-                let right_tile = (entity.tile.0 + 1, entity.tile.1);
-                let down_tile = (entity.tile.0, entity.tile.1 + 1);
-                let left_tile = (entity.tile.0 - 1, entity.tile.1);
+    pub fn update(
+        &mut self,
+        entities: &mut Vec<Entity>,
+        entity_map: &mut HashMap<(i32, i32), HashSet<usize>>
+    ) {
+        let mut new_positions: HashMap<usize, (i32, i32)> = HashMap::new();
 
-                // use the tile positions to query the entity_map
-                let _ = entity.neighbors.up.insert(entity_map.get(&up_tile).unwrap_or(&HashSet::new()).clone());
-                let _ = entity.neighbors.right.insert(entity_map.get(&right_tile).unwrap_or(&HashSet::new()).clone());
-                let _ = entity.neighbors.down.insert(entity_map.get(&down_tile).unwrap_or(&HashSet::new()).clone());
-                let _ = entity.neighbors.left.insert(entity_map.get(&left_tile).unwrap_or(&HashSet::new()).clone());
-                
-                if entity.states.contains_key(&EntityState::You) {
-                    println!("up: {:?}\n right: {:?}\n down: {:?}\n left: {:?}\n", entity.neighbors.up, entity.neighbors.right, entity.neighbors.down, entity.neighbors.left);
-                    entity.tile = match entity.movement_direction {
-                        MovementDirection::Up => up_tile,
-                        MovementDirection::Right => right_tile,
-                        MovementDirection::Down => down_tile,
-                        MovementDirection::Left => left_tile,
-                        MovementDirection::Idle => entity.tile,
-                    };
-                    
-                    entity.tile_to_position(self.tile_width, self.tile_height);
-
-                    entity.sprite_data.current_frame =
-                        (entity.sprite_data.current_frame + 1) % entity.sprite_data.num_frames;
+        for (i, entity) in entities.iter().enumerate() {
+            // Only move if there's no STOP entity in the direction of movement
+            let can_move = match entity.movement_direction {
+                MovementDirection::Up => {
+                    !entity.neighbors.up.as_ref().map_or(false, |neighbor| {
+                        neighbor.iter().any(|idx| {
+                            entities
+                                .get(*idx)
+                                .map(|e| e.states.contains_key(&EntityState::Stop))
+                                .unwrap_or(false)
+                        })
+                    })
                 }
+                MovementDirection::Right => {
+                    !entity.neighbors.right.as_ref().map_or(false, |neighbor| {
+                        neighbor.iter().any(|idx| {
+                            entities
+                                .get(*idx)
+                                .map(|e| e.states.contains_key(&EntityState::Stop))
+                                .unwrap_or(false)
+                        })
+                    })
+                }
+                MovementDirection::Down => {
+                    !entity.neighbors.down.as_ref().map_or(false, |neighbor| {
+                        neighbor.iter().any(|idx| {
+                            entities
+                                .get(*idx)
+                                .map(|e| e.states.contains_key(&EntityState::Stop))
+                                .unwrap_or(false)
+                        })
+                    })
+                }
+                MovementDirection::Left => {
+                    !entity.neighbors.left.as_ref().map_or(false, |neighbor| {
+                        neighbor.iter().any(|idx| {
+                            entities
+                                .get(*idx)
+                                .map(|e| e.states.contains_key(&EntityState::Stop))
+                                .unwrap_or(false)
+                        })
+                    })
+                }
+                _ => true,
+            };
 
-                let frame_multiplier = match entity.movement_direction {
-                    MovementDirection::Up => 4,
-                    MovementDirection::Right => 0,
-                    MovementDirection::Down => 12,
-                    MovementDirection::Left => 8,
-                    MovementDirection::Idle =>
-                        match entity.facing {
-                            MovementDirection::Up => 4,
-                            MovementDirection::Right => 0,
-                            MovementDirection::Down => 12,
-                            MovementDirection::Left => 8,
-                            _ => 0,
-                        }
-                };
+            let new_tile = if can_move {
+                match entity.movement_direction {
+                    MovementDirection::Up => (entity.tile.0, entity.tile.1 - 1),
+                    MovementDirection::Right => (entity.tile.0 + 1, entity.tile.1),
+                    MovementDirection::Down => (entity.tile.0, entity.tile.1 + 1),
+                    MovementDirection::Left => (entity.tile.0 - 1, entity.tile.1),
+                    MovementDirection::Idle => entity.tile,
+                }
+            } else {
+                entity.tile
+            };
 
-                let is_idle_factor = match entity.movement_direction {
-                    MovementDirection::Idle => 0,
-                    _ => 1,
-                };
-
-                let frame_width_plus_one = (entity.sprite_data.frame_width as i32) + 1;
-                entity.sprite_data.frame_x =
-                    frame_multiplier * frame_width_plus_one +
-                    entity.sprite_data.start_frame.x() +
-                    frame_width_plus_one *
-                        ((entity.sprite_data.current_frame as i32) * is_idle_factor);
+            new_positions.insert(i, new_tile);
 
         }
 
         entity_map.clear();
-
-        // then, repopulate it based on the new entity positions
-        for (i, entity) in entities.iter().enumerate() {
-            entity_map.entry(entity.tile).or_insert_with(HashSet::new).insert(i);
+        for (i, entity) in entities.iter_mut().enumerate() {
+            if let Some(new_tile) = new_positions.get(&i) {
+                entity.tile = *new_tile;
+                entity.tile_to_position(self.tile_width, self.tile_height);
+                entity_map.entry(entity.tile).or_insert_with(HashSet::new).insert(i);
+            }
         }
+        
+        for (_i, entity) in entities.iter_mut().enumerate() {
+            // compute the tile positions of the four adjacent tiles
+            let up_tile = (entity.tile.0, entity.tile.1 - 1);
+            let right_tile = (entity.tile.0 + 1, entity.tile.1);
+            let down_tile = (entity.tile.0, entity.tile.1 + 1);
+            let left_tile = (entity.tile.0 - 1, entity.tile.1);
+
+            // use the tile positions to query the entity_map
+            entity.neighbors.up = entity_map.get(&up_tile).cloned();
+            entity.neighbors.right = entity_map.get(&right_tile).cloned();
+            entity.neighbors.down = entity_map.get(&down_tile).cloned();
+            entity.neighbors.left = entity_map.get(&left_tile).cloned();
+
+            // Update entity sprite frame
+            entity.sprite_data.current_frame =
+                (entity.sprite_data.current_frame + 1) % entity.sprite_data.num_frames;
+
+            // Determine frame_multiplier based on entity direction
+            let frame_multiplier = match entity.movement_direction {
+                MovementDirection::Up => 4,
+                MovementDirection::Right => 0,
+                MovementDirection::Down => 12,
+                MovementDirection::Left => 8,
+                MovementDirection::Idle =>
+                    match entity.facing {
+                        MovementDirection::Up => 4,
+                        MovementDirection::Right => 0,
+                        MovementDirection::Down => 12,
+                        MovementDirection::Left => 8,
+                        _ => 0,
+                    }
+            };
+
+            // Determine if entity is idle
+            let is_idle_factor = match entity.movement_direction {
+                MovementDirection::Idle => 0,
+                _ => 1,
+            };
+
+            // Calculate frame position based on entity state
+            let frame_width_plus_one = (entity.sprite_data.frame_width as i32) + 1;
+            entity.sprite_data.frame_x =
+                frame_multiplier * frame_width_plus_one +
+                entity.sprite_data.start_frame.x() +
+                frame_width_plus_one *
+                    ((entity.sprite_data.current_frame as i32) * is_idle_factor);
+        }
+    }
+
+    fn debug_console_out(&mut self, debug_console: &mut DebugConsole, entities: &Vec<Entity>, entity_map: &HashMap<(i32, i32), HashSet<usize>>) {
+        for entity in entities {
+            let tile_str = format!("{:?} Tile: x: {}, y: {}", entity.name, entity.tile.0, entity.tile.1);
+            let neighbors_str = format!("{:?}, {:?}", entity.name, entity.neighbors);
+            let entity_map_str = format!("Entity Map: {:?}", entity_map);
+            let debug_strings = vec![
+                (DebugKey::Render(format!("Tile({:?})", entity.name).to_owned()), tile_str),
+                (DebugKey::Render(format!("Neighbors({:?})", entity.name).to_owned()), neighbors_str),
+                (DebugKey::Render("Entity Map".to_string()), entity_map_str)
+            ];
+            debug_console.out(debug_strings);
+        }
+        debug_console.draw(&mut self.context.canvas);
     }
 }

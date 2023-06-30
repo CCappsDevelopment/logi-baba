@@ -1,7 +1,10 @@
 use logibaba::MovementDirection;
 
+use sdl2::render::Canvas;
+use sdl2::video::Window;
 use sdl2::{event::Event, keyboard::Keycode, mouse::MouseButton, EventPump};
 
+use crate::debug_console::{DebugConsole, DebugKey};
 use crate::entity::{Entity, EntityState};
 use crate::logibaba;
 
@@ -11,7 +14,8 @@ impl Events {
     pub fn process_events(
         entities: &mut Vec<Entity>,
         event_pump: &mut EventPump,
-        canvas: &mut sdl2::render::Canvas<sdl2::video::Window>,
+        canvas: &mut Canvas<Window>,
+        debug_console: &mut DebugConsole,
     ) -> bool {
         let mut movement_direction = None;
         let mut facing = None;
@@ -59,17 +63,36 @@ impl Events {
                         movement_direction = Some(MovementDirection::Right);
                         facing = Some(MovementDirection::Right);
                     }
-                    Keycode::Space => {
+                    Keycode::P => {
+                        let mut debug_strings = Vec::new();
                         for entity in &mut *entities {
-                            if !entity.states.contains_key(&EntityState::You) {
-                                if !entity.states.contains_key(&EntityState::Stop) {
-                                    entity.states.insert(EntityState::Stop, true);
-                                } else {
-                                    entity.states.remove(&EntityState::Stop);
-                                }
-                                println!("{:?}: {:?}", entity.name, entity.states)
+                            if !entity.states.contains_key(&EntityState::Push) {
+                                entity.states.insert(EntityState::Push, true);
+                            } else {
+                                entity.states.remove(&EntityState::Push);
                             }
+                    
+                           debug_strings.push((DebugKey::Rules(entity.name.to_string()), format!("{:?}: {:?}", entity.name, entity.states)));
                         }
+                    
+                        debug_console.out(debug_strings);
+                    }
+                    Keycode::Space => {
+                        let mut debug_strings = Vec::new();
+                        for entity in &mut *entities {
+                            if !entity.states.contains_key(&EntityState::Stop) {
+                                entity.states.insert(EntityState::Stop, true);
+                            } else {
+                                entity.states.remove(&EntityState::Stop);
+                            }
+                    
+                           debug_strings.push((DebugKey::Rules(entity.name.to_string()), format!("{:?}: {:?}", entity.name, entity.states)));
+                        }
+                    
+                        debug_console.out(debug_strings);
+                    }                    
+                    Keycode::Backquote => {
+                        debug_console.show_console = !debug_console.show_console;
                     }
                     _ => {}
                 },
@@ -92,7 +115,7 @@ impl Events {
                 _ => {}
             }
 
-            if !movement_direction.is_none() {
+            if movement_direction.is_some() {
                 for entity in &mut *entities {
                     if entity.states.contains_key(&EntityState::You) {
                         entity.movement_direction = movement_direction.unwrap();
