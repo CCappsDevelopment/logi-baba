@@ -22,6 +22,7 @@ pub struct ScreenRenderer {
     pub window_height: i32,
     pub tile_width: i32,
     pub tile_height: i32,
+    pub grid_size: (i32, i32),
 }
 
 impl ScreenRenderer {
@@ -35,6 +36,7 @@ impl ScreenRenderer {
         let window_height = context.canvas.viewport().height() as i32;
         let tile_width = window_width / 12;
         let tile_height = window_height / 8;
+        let grid_size = (12, 8);
 
         ScreenRenderer {
             context,
@@ -46,6 +48,7 @@ impl ScreenRenderer {
             window_height,
             tile_width,
             tile_height,
+            grid_size,
         }
     }
 
@@ -303,13 +306,12 @@ impl ScreenRenderer {
     }
 
     fn update_neighbors(&self, entities: &mut Vec<Entity>, entity_map: &HashMap<(i32, i32), HashSet<usize>>) {
-        let grid_size = (12, 8);
         for (_i, entity) in entities.iter_mut().enumerate() {
             // compute the tile positions of the four adjacent tiles
-            let up_tile = (entity.tile.0, (entity.tile.1 - 1 + grid_size.1) % grid_size.1);
-            let right_tile = ((entity.tile.0 + 1 + grid_size.0) % grid_size.0, entity.tile.1);
-            let down_tile = (entity.tile.0, (entity.tile.1 + 1 + grid_size.1) % grid_size.1);
-            let left_tile = ((entity.tile.0 - 1 + grid_size.0) % grid_size.0, entity.tile.1);
+            let up_tile = (entity.tile.0, (entity.tile.1 - 1 + self.grid_size.1) % self.grid_size.1);
+            let right_tile = ((entity.tile.0 + 1 + self.grid_size.0) % self.grid_size.0, entity.tile.1);
+            let down_tile = (entity.tile.0, (entity.tile.1 + 1 + self.grid_size.1) % self.grid_size.1);
+            let left_tile = ((entity.tile.0 - 1 + self.grid_size.0) % self.grid_size.0, entity.tile.1);
 
             // use the tile positions to query the entity_map
             entity.neighbors.up = entity_map.get(&up_tile).cloned();
