@@ -65,8 +65,8 @@ impl<'a> Game<'a> {
         }
     }
 
-    fn load_level(&mut self, level_to_load: i32) {
-        let level_map = LevelMap::new(level_to_load, &self.screen_renderer.context);
+    pub fn load_level(&mut self, level_to_load: i32) {
+        let level_map = LevelMap::new(level_to_load, &self.screen_renderer.context.canvas);
         self.entities = level_map.entities;
         self.entity_map = level_map.entity_map;
 

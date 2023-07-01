@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 
-use crate::sdl_context::SdlContext;
+use sdl2::render::Canvas;
+use sdl2::video::Window;
+
 use crate::entity::{ Entity, EntityRepository };
 
 pub struct LevelMap {
@@ -10,15 +12,14 @@ pub struct LevelMap {
 }
 
 impl LevelMap {
-    pub fn new(level_to_load: i32, sdl_context: &SdlContext) -> LevelMap {
-        let loaded_map_entities = LevelMap::get_level_map(level_to_load, &sdl_context);
+    pub fn new(level_to_load: i32, canvas: &Canvas<Window>) -> LevelMap {
+        let loaded_map_entities = LevelMap::get_level_map(level_to_load, &canvas);
         let mut entity_map = HashMap::new();
-        
         for (index, entity) in loaded_map_entities.iter().enumerate() {
-            let entity_tile = (entity.tile.0, entity.tile.1);
+            let entity_position = (entity.tile.0, entity.tile.1);
             let mut entity_set = HashSet::new();
             entity_set.insert(index);
-            entity_map.insert(entity_tile, entity_set);
+            entity_map.insert(entity_position, entity_set);
         }
 
         LevelMap {
@@ -27,9 +28,9 @@ impl LevelMap {
         }
     }
 
-    fn get_level_map(level: i32, sdl_context: &SdlContext) -> Vec<Entity> {
-        let tile_width = sdl_context.canvas.viewport().width() / 12;
-        let tile_height = sdl_context.canvas.viewport().height() / 8;
+    fn get_level_map(level: i32, canvas: &Canvas<Window>) -> Vec<Entity> {
+        let tile_width = canvas.viewport().width() / 12;
+        let tile_height = canvas.viewport().height() / 8;
 
         let mut entities = Vec::new();
         let entity_repo = EntityRepository::new(tile_width, tile_height);

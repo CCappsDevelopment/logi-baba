@@ -6,6 +6,7 @@ use sdl2::{event::Event, keyboard::Keycode, mouse::MouseButton, EventPump};
 
 use crate::debug_console::{DebugConsole, DebugKey};
 use crate::entity::{Entity, EntityState};
+use crate::level_map::LevelMap;
 use crate::logibaba;
 
 pub struct Events;
@@ -63,13 +64,19 @@ impl Events {
                         movement_direction = Some(MovementDirection::Right);
                         facing = Some(MovementDirection::Right);
                     }
+                    Keycode::R => {
+                        entities.clear();
+                        entities.append(&mut LevelMap::new(1, &canvas).entities);
+                    }
                     Keycode::P => {
                         let mut debug_strings = Vec::new();
                         for entity in &mut *entities {
-                            if !entity.states.contains_key(&EntityState::Push) {
-                                entity.states.insert(EntityState::Push, true);
-                            } else {
-                                entity.states.remove(&EntityState::Push);
+                            if !entity.states.contains_key(&EntityState::You) {
+                                if !entity.states.contains_key(&EntityState::Push) {
+                                    entity.states.insert(EntityState::Push, true);
+                                } else {
+                                    entity.states.remove(&EntityState::Push);
+                                }
                             }
                     
                            debug_strings.push((DebugKey::Rules(entity.name.to_string()), format!("{:?}: {:?}", entity.name, entity.states)));

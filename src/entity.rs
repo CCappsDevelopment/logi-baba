@@ -22,6 +22,7 @@ pub enum EntityState {
     You,
     Win,
     Push,
+    Move,
     Stop,
 }
 
@@ -43,6 +44,7 @@ pub struct Entity {
     pub draw_order: i32,
     pub sprite_data: SpriteData,
     pub movement_direction: MovementDirection,
+    pub intended_movement: MovementDirection,
     pub facing: MovementDirection,
     pub speed: f32,
 }
@@ -101,6 +103,7 @@ impl EntityRepository {
                     current_frame: 0,
                 },
                 movement_direction: MovementDirection::Idle,
+                intended_movement: MovementDirection::Idle,
                 facing: MovementDirection::Right,
                 speed: 1.0,
             },
@@ -132,6 +135,7 @@ impl EntityRepository {
                     current_frame: 0,
                 },
                 movement_direction: MovementDirection::Idle,
+                intended_movement: MovementDirection::Idle,
                 facing: MovementDirection::Right,
                 speed: 0.0,
             },
@@ -157,6 +161,7 @@ impl EntityRepository {
             draw_order: entity.draw_order,
             sprite_data: entity.sprite_data.clone(),
             movement_direction: entity.movement_direction.clone(),
+            intended_movement: entity.intended_movement.clone(),
             facing: entity.facing.clone(),
             speed: entity.speed,
         })
