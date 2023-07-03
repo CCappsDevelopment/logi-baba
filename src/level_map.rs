@@ -47,10 +47,25 @@ impl LevelMap {
             2 => {
                 entities = vec![
                     entity_repo
-                        .create_entity("Logi", 6 * (tile_width as i32), 1 * (tile_height as i32))
+                        .create_entity("Logi", 0 * (tile_width as i32), 0 * (tile_height as i32))
                         .unwrap(),
                     entity_repo
                         .create_entity("Goal", 0 * (tile_width as i32), 6 * (tile_height as i32))
+                        .unwrap(),
+                    entity_repo
+                        .create_entity("LogiText", 3 * (tile_width as i32), 1 * (tile_height as i32))
+                        .unwrap(),
+                    entity_repo
+                        .create_entity("GoalText", 3 * (tile_width as i32), 3 * (tile_height as i32))
+                        .unwrap(),
+                    entity_repo
+                        .create_entity("Stop", 6 * (tile_width as i32), 1 * (tile_height as i32))
+                        .unwrap(),
+                    entity_repo
+                        .create_entity("Push", 6 * (tile_width as i32), 3 * (tile_height as i32))
+                        .unwrap(),
+                    entity_repo
+                        .create_entity("Is", 5 * (tile_width as i32), 4 * (tile_height as i32))
                         .unwrap()
                 ];
             }

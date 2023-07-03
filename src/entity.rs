@@ -25,6 +25,7 @@ pub enum EntityState {
     Push,
     Move,
     Stop,
+    Active,
 }
 
 #[derive(Debug, Clone)]
@@ -33,6 +34,17 @@ pub struct Neighbors {
     pub right: Option<HashSet<usize>>,
     pub down: Option<HashSet<usize>>,
     pub left: Option<HashSet<usize>>,
+}
+
+impl Neighbors {
+    pub fn new() -> Self {
+        Self {
+            up: None,
+            right: None,
+            down: None,
+            left: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +57,6 @@ pub struct Entity {
     pub draw_order: i32,
     pub sprite_data: SpriteData,
     pub movement_direction: MovementDirection,
-    pub intended_movement: MovementDirection,
     pub facing: MovementDirection,
     pub speed: f32,
 }
@@ -78,34 +89,36 @@ impl EntityRepository {
     pub fn new(tile_width: u32, tile_height: u32) -> Self {
         let mut predefined_entities = HashMap::new();
 
+        let position = (0, 0);
+        let tile = (0, 0);
+        let frame_width = 24;
+        let frame_height = 24;
+        let sprite_width = tile_width;
+        let sprite_height = tile_height;
+        let current_frame = 0;
+
         predefined_entities.insert(
             "Logi".to_string(),
             Entity {
                 name: "Logi".to_string(),
                 states: vec![(EntityState::You, true)].into_iter().collect(),
-                position: (0, 0),
-                tile: (0, 0),
-                neighbors: Neighbors {
-                    up: None,
-                    right: None,
-                    down: None,
-                    left: None,
-                },
+                position,
+                tile,
+                neighbors: Neighbors::new(),
                 draw_order: 3,
                 sprite_data: SpriteData {
                     sprite_sheet: "./assets/spritesheets/characters.png".to_string(),
-                    frame_width: 24,
-                    frame_height: 24,
-                    sprite_width: tile_width,
-                    sprite_height: tile_height,
+                    frame_width,
+                    frame_height,
+                    sprite_width,
+                    sprite_height,
                     start_frame: Rect::new(576, 1, 24, 24),
                     frame_x: 576,
                     frame_y: 1,
                     num_frames: 12,
-                    current_frame: 0,
+                    current_frame,
                 },
                 movement_direction: MovementDirection::Idle,
-                intended_movement: MovementDirection::Idle,
                 facing: MovementDirection::Right,
                 speed: 1.0,
             },
@@ -116,31 +129,160 @@ impl EntityRepository {
             Entity {
                 name: "Goal".to_string(),
                 states: vec![(EntityState::Win, true)].into_iter().collect(),
-                position: (5 * (tile_width as i32), 5 * (tile_height as i32)),
-                tile: (5, 5),
-                neighbors: Neighbors {
-                    up: None,
-                    right: None,
-                    down: None,
-                    left: None,
-                },
+                position,
+                tile,
+                neighbors: Neighbors::new(),
                 draw_order: 1,
                 sprite_data: SpriteData {
                     sprite_sheet: "./assets/spritesheets/objects.png".to_string(),
-                    frame_width: 24,
-                    frame_height: 24,
-                    sprite_width: tile_width,
-                    sprite_height: tile_height,
+                    frame_width,
+                    frame_height,
+                    sprite_width,
+                    sprite_height,
                     start_frame: Rect::new(101, 226, 24, 24),
                     frame_x: 101,
                     frame_y: 226,
                     num_frames: 1,
-                    current_frame: 0,
+                    current_frame,
                 },
                 movement_direction: MovementDirection::Idle,
-                intended_movement: MovementDirection::Idle,
                 facing: MovementDirection::Right,
                 speed: 0.0,
+            },
+        );
+
+        predefined_entities.insert(
+            "LogiText".to_string(),
+            Entity {
+                name: "Logitext".to_string(),
+                states: vec![(EntityState::Active, false)].into_iter().collect(),
+                position,
+                tile,
+                neighbors: Neighbors::new(),
+                draw_order: 2,
+                sprite_data: SpriteData {
+                    sprite_sheet: "./assets/spritesheets/characters.png".to_string(),
+                    frame_width,
+                    frame_height,
+                    sprite_width,
+                    sprite_height,
+                    start_frame: Rect::new(526, 1, 24, 24),
+                    frame_x: 526,
+                    frame_y: 1,
+                    num_frames: 2,
+                    current_frame,
+                },
+                movement_direction: MovementDirection::Idle,
+                facing: MovementDirection::Right,
+                speed: 1.0,
+            },
+        );
+
+        predefined_entities.insert(
+            "GoalText".to_string(),
+            Entity {
+                name: "GoalText".to_string(),
+                states: vec![(EntityState::Active, false)].into_iter().collect(),
+                position,
+                tile,
+                neighbors: Neighbors::new(),
+                draw_order: 2,
+                sprite_data: SpriteData {
+                    sprite_sheet: "./assets/spritesheets/objects.png".to_string(),
+                    frame_width,
+                    frame_height,
+                    sprite_width,
+                    sprite_height,
+                    start_frame: Rect::new(51, 226, 24, 24),
+                    frame_x: 51,
+                    frame_y: 226,
+                    num_frames: 2,
+                    current_frame,
+                },
+                movement_direction: MovementDirection::Idle,
+                facing: MovementDirection::Right,
+                speed: 1.0,
+            },
+        );
+
+        predefined_entities.insert(
+            "Is".to_string(),
+            Entity {
+                name: "Is".to_string(),
+                states: vec![(EntityState::Active, false)].into_iter().collect(),
+                position,
+                tile,
+                neighbors: Neighbors::new(),
+                draw_order: 2,
+                sprite_data: SpriteData {
+                    sprite_sheet: "./assets/spritesheets/text-entities.png".to_string(),
+                    frame_width,
+                    frame_height,
+                    sprite_width,
+                    sprite_height,
+                    start_frame: Rect::new(251, 76, 24, 24),
+                    frame_x: 251,
+                    frame_y: 76,
+                    num_frames: 2,
+                    current_frame,
+                },
+                movement_direction: MovementDirection::Idle,
+                facing: MovementDirection::Right,
+                speed: 1.0,
+            },
+        );
+
+        predefined_entities.insert(
+            "Push".to_string(),
+            Entity {
+                name: "Push".to_string(),
+                states: vec![(EntityState::Active, false)].into_iter().collect(),
+                position,
+                tile,
+                neighbors: Neighbors::new(),
+                draw_order: 2,
+                sprite_data: SpriteData {
+                    sprite_sheet: "./assets/spritesheets/text-entities.png".to_string(),
+                    frame_width,
+                    frame_height,
+                    sprite_width,
+                    sprite_height,
+                    start_frame: Rect::new(26, 301, 24, 24),
+                    frame_x: 26,
+                    frame_y: 301,
+                    num_frames: 2,
+                    current_frame,
+                },
+                movement_direction: MovementDirection::Idle,
+                facing: MovementDirection::Right,
+                speed: 1.0,
+            },
+        );
+
+        predefined_entities.insert(
+            "Stop".to_string(),
+            Entity {
+                name: "Stop".to_string(),
+                states: vec![(EntityState::Active, false)].into_iter().collect(),
+                position,
+                tile,
+                neighbors: Neighbors::new(),
+                draw_order: 2,
+                sprite_data: SpriteData {
+                    sprite_sheet: "./assets/spritesheets/text-entities.png".to_string(),
+                    frame_width,
+                    frame_height,
+                    sprite_width,
+                    sprite_height,
+                    start_frame: Rect::new(176, 301, 24, 24),
+                    frame_x: 176,
+                    frame_y: 301,
+                    num_frames: 2,
+                    current_frame,
+                },
+                movement_direction: MovementDirection::Idle,
+                facing: MovementDirection::Right,
+                speed: 1.0,
             },
         );
 
@@ -164,7 +306,6 @@ impl EntityRepository {
             draw_order: entity.draw_order,
             sprite_data: entity.sprite_data.clone(),
             movement_direction: entity.movement_direction.clone(),
-            intended_movement: entity.intended_movement.clone(),
             facing: entity.facing.clone(),
             speed: entity.speed,
         })

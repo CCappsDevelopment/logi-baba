@@ -42,7 +42,7 @@ impl<'a> Game<'a> {
     }
 
     pub fn start(&mut self) {
-        self.load_level(1);
+        self.load_level(2);
 
         // Game loop
         'running: loop {
