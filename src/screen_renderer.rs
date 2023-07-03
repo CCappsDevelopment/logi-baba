@@ -1,11 +1,10 @@
 use std::collections::{ HashMap, HashSet };
 use std::time::Instant;
 
-use sdl2::image::{ InitFlag, LoadSurface, Sdl2ImageContext };
+use sdl2::image::{ InitFlag, Sdl2ImageContext };
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::render::BlendMode;
-use sdl2::surface::Surface;
 
 use crate::debug_console::{DebugConsole, DebugKey};
 use crate::entity::{ Entity, EntityState };
@@ -140,15 +139,7 @@ impl ScreenRenderer {
 
     fn draw_entities(&mut self, entities: &mut Vec<Entity>) -> Result<(), String> {
         for entity in entities.iter_mut() {
-            let texture_creator = self.context.canvas.texture_creator();
-            let mut surface: Surface = LoadSurface::from_file(&entity.sprite_data.sprite_sheet)?;
-
-            let color_key = Color::RGB(84, 165, 75);
-            surface.set_color_key(true, color_key).expect("Could not set color key");
-
-            let texture = texture_creator
-                .create_texture_from_surface(&surface)
-                .map_err(|e| e.to_string())?;
+            let texture = &self.context.texture_map.get(&entity.sprite_data.sprite_sheet).unwrap();
 
             let sprite_rect = Rect::new(
                 entity.sprite_data.frame_x,
@@ -324,9 +315,9 @@ impl ScreenRenderer {
 
     fn update_sprite_frames(&self, entities: &mut Vec<Entity>) {
         for (_i, entity) in entities.iter_mut().enumerate() {
-            // Update entity sprite frame
-            entity.sprite_data.current_frame =
-                (entity.sprite_data.current_frame + 1) % entity.sprite_data.num_frames;
+            if entity.movement_direction == MovementDirection::Idle {
+                continue;
+            }
 
             // Determine frame_multiplier based on entity direction
             let frame_multiplier = match entity.movement_direction {
@@ -344,19 +335,28 @@ impl ScreenRenderer {
                     }
             };
 
-            // Determine if entity is idle
-            let is_idle_factor = match entity.movement_direction {
-                MovementDirection::Idle => 0,
-                _ => 1,
-            };
+            // Update entity animation frame
+            entity.sprite_data.current_frame =
+                (entity.sprite_data.current_frame + 1) % entity.sprite_data.num_frames;
 
-            // Calculate frame position based on entity state
+            // TODO: further abstract this
             let frame_width_plus_one = (entity.sprite_data.frame_width as i32) + 1;
+            let frame_height_plus_one = (entity.sprite_data.frame_height as i32) + 1;
+            let num_x_frames = 4;
+            let num_y_frames = entity.sprite_data.num_frames / num_x_frames;
+                
+            // Calculate frame position based on entity state
             entity.sprite_data.frame_x =
                 frame_multiplier * frame_width_plus_one +
                 entity.sprite_data.start_frame.x() +
-                frame_width_plus_one *
-                    ((entity.sprite_data.current_frame as i32) * is_idle_factor);
+                frame_width_plus_one * ((entity.sprite_data.current_frame % num_x_frames) as i32);
+
+            if entity.sprite_data.current_frame % num_x_frames == 0 {
+                entity.sprite_data.frame_y =
+                    entity.sprite_data.start_frame.y() +
+                    frame_height_plus_one *
+                        ((entity.sprite_data.current_frame / num_y_frames) as i32);
+            }
         }
     }
 
