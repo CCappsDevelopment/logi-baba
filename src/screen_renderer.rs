@@ -355,20 +355,21 @@ impl ScreenRenderer {
     pub fn debug_console_out(&mut self, debug_console: &mut DebugConsole, entities: &Vec<Entity>, entity_map: &HashMap<(i32, i32), HashSet<usize>>) {
         let mut debug_strings = Vec::new();
         
-        debug_strings.push((DebugKey::Render(String::from("3_Entities()")), String::from("Entities: \n=================================")));
+        debug_strings.push((DebugKey::Entity(String::from("3_Entities()")), String::from("Entities: \n=================================")));
         for entity in entities {
             let entity_str = format!(
-                "     Name: {:?} {{\n        Tile: {:?},\n        Neighbors: {:?},\n    }},", 
+                "     Name: {:?} {{\n        Tile: {:?},\n        States: {:?}\n        Neighbors: {:?},\n    }},", 
                 entity.name, 
                 entity.tile, 
+                entity.states,
                 entity.neighbors
             );
 
-            debug_strings.push((DebugKey::Render(format!("3_Entity({:?})", entity.name)), entity_str));
+            debug_strings.push((DebugKey::Entity(format!("3_Entity({:?})", entity.name)), entity_str));
         }
         
         let entity_map_str = format!("Map: {:?}", entity_map);
-        debug_strings.push((DebugKey::Render("2_Map".to_string()), entity_map_str));
+        debug_strings.push((DebugKey::Entity("2_Map".to_string()), entity_map_str));
         
         debug_console.out(debug_strings);
 

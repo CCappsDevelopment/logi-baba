@@ -71,7 +71,7 @@ impl<'a> Game<'a> {
         self.entity_map = level_map.entity_map;
     
         let level_str = format!("Level: {:?}", level_to_load);
-        self.debug_console.out(vec![(DebugKey::Render("1_Level".to_string()), level_str)]);
+        self.debug_console.out(vec![(DebugKey::Entity("1_Level".to_string()), level_str)]);
 
         self.screen_renderer.debug_console_out(&mut self.debug_console, &self.entities, &self.entity_map);
     }

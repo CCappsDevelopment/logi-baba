@@ -4,7 +4,7 @@ use sdl2::render::Canvas;
 use sdl2::video::Window;
 use sdl2::{event::Event, keyboard::Keycode, mouse::MouseButton, EventPump};
 
-use crate::debug_console::{DebugConsole, DebugKey};
+use crate::debug_console::DebugConsole;
 use crate::entity::{Entity, EntityState};
 use crate::level_map::LevelMap;
 use crate::logibaba;
@@ -69,7 +69,6 @@ impl Events {
                         entities.append(&mut LevelMap::new(2, &canvas).entities);
                     }
                     Keycode::P => {
-                        let mut debug_strings = Vec::new();
                         for entity in &mut *entities {
                             if !entity.states.contains_key(&EntityState::You) {
                                 if !entity.states.contains_key(&EntityState::Push) {
@@ -78,25 +77,16 @@ impl Events {
                                     entity.states.remove(&EntityState::Push);
                                 }
                             }
-                    
-                           debug_strings.push((DebugKey::Rules(entity.name.to_string()), format!("{:?}: {:?}", entity.name, entity.states)));
                         }
-                    
-                        debug_console.out(debug_strings);
                     }
                     Keycode::Space => {
-                        let mut debug_strings = Vec::new();
                         for entity in &mut *entities {
                             if !entity.states.contains_key(&EntityState::Stop) {
                                 entity.states.insert(EntityState::Stop, true);
                             } else {
                                 entity.states.remove(&EntityState::Stop);
                             }
-                    
-                           debug_strings.push((DebugKey::Rules(entity.name.to_string()), format!("{:?}: {:?}", entity.name, entity.states)));
-                        }
-                    
-                        debug_console.out(debug_strings);
+                        }                    
                     }                    
                     Keycode::Backquote => {
                         debug_console.show_console = !debug_console.show_console;
