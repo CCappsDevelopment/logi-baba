@@ -66,7 +66,7 @@ impl Events {
                     }
                     Keycode::R => {
                         entities.clear();
-                        entities.append(&mut LevelMap::new(1, &canvas).entities);
+                        entities.append(&mut LevelMap::new(2, &canvas).entities);
                     }
                     Keycode::P => {
                         let mut debug_strings = Vec::new();

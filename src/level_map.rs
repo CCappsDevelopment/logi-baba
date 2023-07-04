@@ -39,9 +39,9 @@ impl LevelMap {
             1 => {
                 entities = vec![
                     entity_repo.create_entity("Logi", 0, 0).unwrap(),
-                    entity_repo
-                        .create_entity("Goal", 5 * (tile_width as i32), 5 * (tile_height as i32))
-                        .unwrap()
+                    // entity_repo
+                    //     .create_entity("Goal", 5 * (tile_width as i32), 5 * (tile_height as i32))
+                    //     .unwrap()
                 ];
             }
             2 => {

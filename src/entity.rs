@@ -88,7 +88,7 @@ pub struct EntityRepository {
 impl EntityRepository {
     pub fn new(tile_width: u32, tile_height: u32) -> Self {
         let mut predefined_entities = HashMap::new();
-
+        
         let position = (0, 0);
         let tile = (0, 0);
         let frame_width = 24;
@@ -285,7 +285,7 @@ impl EntityRepository {
                 speed: 1.0,
             },
         );
-
+        
         Self {
             tile_width,
             tile_height,

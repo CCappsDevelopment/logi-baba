@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use sdl2::image::LoadSurface;
 use sdl2::pixels::Color;
-use sdl2::render::{Canvas, Texture};
+use sdl2::render::{Canvas, Texture, BlendMode};
 use sdl2::surface::Surface;
 use sdl2::video::Window;
 use sdl2::EventPump;
@@ -16,6 +16,9 @@ pub struct SdlContext {
 impl SdlContext {
     pub fn new() -> SdlContext {
         let (event_pump, canvas) = Self::init_sdl2().unwrap();
+
+        let window_width = canvas.viewport().width();
+        let window_height = canvas.viewport().height();
 
         let texture_creator = canvas.texture_creator();
         

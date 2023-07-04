@@ -69,12 +69,11 @@ impl<'a> Game<'a> {
         let level_map = LevelMap::new(level_to_load, &self.screen_renderer.context.canvas);
         self.entities = level_map.entities;
         self.entity_map = level_map.entity_map;
+    
+        let level_str = format!("Level: {:?}", level_to_load);
+        self.debug_console.out(vec![(DebugKey::Render("1_Level".to_string()), level_str)]);
 
-        let mut debug_strings = Vec::new();
-        debug_strings.push((DebugKey::Render("Level".to_string()), format!("Level: {:?}", level_to_load)));
-        debug_strings.push((DebugKey::Render("Entity Map".to_string()), format!("Entity Map: {:?}", self.entity_map)));
-
-        self.debug_console.out(debug_strings);
-
+        self.screen_renderer.debug_console_out(&mut self.debug_console, &self.entities, &self.entity_map);
     }
+    
 }

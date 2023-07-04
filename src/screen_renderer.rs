@@ -4,7 +4,7 @@ use std::time::Instant;
 use sdl2::image::{ InitFlag, Sdl2ImageContext };
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
-use sdl2::render::BlendMode;
+use sdl2::render::{BlendMode, Texture};
 
 use crate::debug_console::{DebugConsole, DebugKey};
 use crate::entity::{ Entity, EntityState };
@@ -22,11 +22,12 @@ pub struct ScreenRenderer {
     pub tile_width: i32,
     pub tile_height: i32,
     pub grid_size: (i32, i32),
+    pub grid_texture: Texture,
 }
 
 impl ScreenRenderer {
     pub fn new() -> ScreenRenderer {
-        let context = SdlContext::new();
+        let mut context = SdlContext::new();
         let frame_delay = 6; // Increase for slower animation.
         let frame_ticks = 0;
         let image_context = sdl2::image::init(InitFlag::PNG | InitFlag::JPG).unwrap();
@@ -36,6 +37,31 @@ impl ScreenRenderer {
         let tile_width = window_width / 12;
         let tile_height = window_height / 8;
         let grid_size = (12, 8);
+
+        let texture_creator = context.canvas.texture_creator();
+        let mut grid_texture = texture_creator
+            .create_texture_target(None, window_width as u32, window_height as u32)
+            .unwrap();
+
+        grid_texture.set_blend_mode(BlendMode::Blend);
+
+        // create the grid on the texture
+        context.canvas
+            .with_texture_canvas(&mut grid_texture, |canvas| {
+                canvas.set_draw_color(Color::RGBA(228, 228, 240, 64));
+
+                // Draw vertical lines
+                for x in (0..window_width).step_by((window_width as usize) / 12) {
+                    canvas.draw_line((x as i32, 0), (x as i32, window_height as i32)).unwrap();
+                }
+
+                // Draw horizontal lines
+                for y in (0..window_height).step_by((window_height as usize) / 8) {
+                    canvas.draw_line((0, y as i32), (window_width as i32, y as i32)).unwrap();
+                }
+            })
+            .unwrap();
+
 
         ScreenRenderer {
             context,
@@ -48,6 +74,7 @@ impl ScreenRenderer {
             tile_width,
             tile_height,
             grid_size,
+            grid_texture,
         }
     }
 
@@ -68,7 +95,7 @@ impl ScreenRenderer {
         let _ = self.draw_entities(entities);
 
         if debug_console.show_console {
-            self.debug_console_out(debug_console, entities, entity_map);
+           self.debug_console_out(debug_console, entities, entity_map);
         }
 
         self.context.canvas.present();
@@ -105,35 +132,8 @@ impl ScreenRenderer {
     // ad a cfg to run the draw_grid function on windows and macos
     #[cfg(not(target_os = "linux"))]
     fn draw_grid(&mut self) -> Result<(), String> {
-        // Create a texture for drawing
-        let texture_creator = self.context.canvas.texture_creator();
-        let mut texture = texture_creator
-            .create_texture_target(None, self.window_width as u32, self.window_height as u32)
-            .unwrap();
-
-        // Set the blend mode for the texture
-        texture.set_blend_mode(BlendMode::Blend);
-
-        // Set the texture as the target for the canvas
-        self.context.canvas
-            .with_texture_canvas(&mut texture, |canvas| {
-                canvas.set_draw_color(Color::RGBA(228, 228, 240, 64));
-
-                // Draw vertical lines
-                for x in (0..self.window_width).step_by((self.window_width as usize) / 12) {
-                    canvas.draw_line((x as i32, 0), (x as i32, self.window_height as i32)).unwrap();
-                }
-
-                // Draw horizontal lines
-                for y in (0..self.window_height).step_by((self.window_height as usize) / 8) {
-                    canvas.draw_line((0, y as i32), (self.window_width as i32, y as i32)).unwrap();
-                }
-            })
-            .unwrap();
-
+        self.context.canvas.copy(&self.grid_texture, None, None).unwrap();
         // Draw the texture to the screen
-        self.context.canvas.copy(&texture, None, None).unwrap();
-
         Ok(())
     }
 
@@ -273,14 +273,6 @@ impl ScreenRenderer {
 
 
             new_positions.insert(i, new_tile);
-
-            let debug_strings = vec![
-                (DebugKey::Render(format!("CheckStop:({:?})", entity.name).to_owned()), format!("{:?} - Is Stopped: {:?}", entity.name, !can_move)),
-                (DebugKey::Render(format!("CheckPush:({:?})", entity.name).to_owned()), format!("{:?} - Is Pushed: {:?}", entity.name, is_pushed)),
-                (DebugKey::Render(format!("CheckPushDir:({:?})", entity.name).to_owned()), format!("{:?} - Push Dir: {:?}", entity.name, push_direction)),
-
-            ];
-            debug_console.out(debug_strings);
         }       
         return new_positions;
     }
@@ -360,18 +352,27 @@ impl ScreenRenderer {
         }
     }
 
-    fn debug_console_out(&mut self, debug_console: &mut DebugConsole, entities: &Vec<Entity>, entity_map: &HashMap<(i32, i32), HashSet<usize>>) {
+    pub fn debug_console_out(&mut self, debug_console: &mut DebugConsole, entities: &Vec<Entity>, entity_map: &HashMap<(i32, i32), HashSet<usize>>) {
+        let mut debug_strings = Vec::new();
+        
+        debug_strings.push((DebugKey::Render(String::from("3_Entities()")), String::from("Entities: \n=================================")));
         for entity in entities {
-            let tile_str = format!("{:?} Tile: x: {}, y: {}", entity.name, entity.tile.0, entity.tile.1);
-            let neighbors_str = format!("{:?}, {:?}", entity.name, entity.neighbors);
-            let entity_map_str = format!("Entity Map: {:?}", entity_map);
-            let debug_strings = vec![
-                (DebugKey::Render(format!("Tile({:?})", entity.name).to_owned()), tile_str),
-                (DebugKey::Render(format!("Neighbors({:?})", entity.name).to_owned()), neighbors_str),
-                (DebugKey::Render("Entity Map".to_string()), entity_map_str)
-            ];
-            debug_console.out(debug_strings);
+            let entity_str = format!(
+                "     Name: {:?} {{\n        Tile: {:?},\n        Neighbors: {:?},\n    }},", 
+                entity.name, 
+                entity.tile, 
+                entity.neighbors
+            );
+
+            debug_strings.push((DebugKey::Render(format!("3_Entity({:?})", entity.name)), entity_str));
         }
+        
+        let entity_map_str = format!("Map: {:?}", entity_map);
+        debug_strings.push((DebugKey::Render("2_Map".to_string()), entity_map_str));
+        
+        debug_console.out(debug_strings);
+
         debug_console.draw(&mut self.context.canvas);
     }
+    
 }
